@@ -1,0 +1,8 @@
+[project]
+name = "jasmin-era5"
+version = "0.1.0"
+dependencies = [
+  "scitools-iris",
+  "numpy",
+  "pandas",
+]
