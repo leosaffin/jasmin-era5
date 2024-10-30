@@ -5,6 +5,9 @@ from iris.cube import CubeList
 from iris.util import squeeze
 import numpy as np
 import pandas as pd
+import metpy.constants
+import metpy.calc
+from metpy.units import units
 
 
 # ERA5 model-level data on jasmin
@@ -79,7 +82,7 @@ def p_on_model_levels(lnsp, target_shape):
     target_shape_half_levels[new_dim] += 1
 
     # Calculate half-level pressure at all grid points
-    lnsp = iris.util.broadcast_to_shape(lnsp.data, target_shape_half_levels, dims)
+    lnsp = iris.util.broadcast_to_shape(lnsp.data.data, target_shape_half_levels, dims)
     a = iris.util.broadcast_to_shape(
         np.array(era5_model_level_info["a [Pa]"]), target_shape_half_levels, [new_dim]
     )
@@ -102,4 +105,31 @@ def p_on_model_levels(lnsp, target_shape):
     p_ml = 0.5 * (p_half[sl_np1] + p_half[sl_n])
     dp = p_half[sl_np1] - p_half[sl_n]
 
-    return p_ml, dp
+    return p_ml, p_half
+
+
+def height_on_model_levels(pressure_half, temperature, specific_humidity, surface_geopotential):
+    # Integrate pressure from surface to top model level
+    # Each sucessive half-level geopotential is z_h,k = z_h,k+1 + Tv * dln(P)
+    Tv = metpy.calc.virtual_temperature(
+        units.Quantity(temperature.data.data, str(temperature.units)),
+        units.Quantity(specific_humidity.data.data, str(specific_humidity.units)),
+    )
+    dlnp = np.diff(np.log(pressure_half), axis=0)
+    dz = metpy.constants.Rd * Tv * dlnp
+
+    nz = pressure_half.shape[0]
+    z_half = units.Quantity(np.zeros_like(pressure_half), str(surface_geopotential.units))
+    z_half[-1, ...] = units.Quantity(surface_geopotential.data.data, str(surface_geopotential.units))
+    for n in range(nz - 2, 0, -1):
+        z_half[n, ...] = z_half[n+1, ...] + dz[n, ...]
+
+    # Interpolate half-level geopotential to full level geopotential, weighting by lnP
+    alpha = 1. - ((pressure_half[:-1, ...] / np.diff(pressure_half, axis=0)) * dlnp)
+    # From documentation, interpolation weighting because top half level (index 0) has
+    # zero pressure but finite height
+    alpha[0, ...] = np.log(2)
+    z = z_half[1:] + (metpy.constants.Rd * Tv * alpha)
+
+    # Convert to height on return
+    return (z / metpy.constants.g).magnitude
