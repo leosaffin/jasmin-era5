@@ -18,7 +18,7 @@ era5_path = (
 )
 era51_path = (
     "/badc/ecmwf-era51/data/oper/an_ml/{year:04d}/{month:02d}/{day:02d}/"
-    "ecmwf-era5_oper_an_ml_{year:04d}{month:02d}{day:02d}{hour:02d}00.*.nc"
+    "ecmwf-era51_oper_an_ml_{year:04d}{month:02d}{day:02d}{hour:02d}00.*.nc"
 )
 
 
