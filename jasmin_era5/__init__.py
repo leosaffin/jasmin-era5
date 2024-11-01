@@ -16,6 +16,10 @@ era5_path = (
     "/badc/ecmwf-era5/data/oper/an_ml/{year:04d}/{month:02d}/{day:02d}/"
     "ecmwf-era5_oper_an_ml_{year:04d}{month:02d}{day:02d}{hour:02d}00.*.nc"
 )
+era51_path = (
+    "/badc/ecmwf-era51/data/oper/an_ml/{year:04d}/{month:02d}/{day:02d}/"
+    "ecmwf-era5_oper_an_ml_{year:04d}{month:02d}{day:02d}{hour:02d}00.*.nc"
+)
 
 
 # Downloaded from https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions
@@ -31,7 +35,12 @@ def load(time):
     Returns:
         iris.cube.CubeList:
     """
-    cubes = iris.load(era5_path.format(
+    # Corrected data uses different path
+    if time.year in range(2000, 2006 + 1):
+        path = era51_path
+    else:
+        path = era5_path
+    cubes = iris.load(path.format(
         year=time.year,
         month=time.month,
         day=time.day,
